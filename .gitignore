@@ -1,0 +1,13 @@
+.DS_Store
+
+# Go build/test output
+bin/
+dist/
+coverage.out
+*.test
+
+# Local editor and environment files
+.env
+.env.*
+.vscode/
+.idea/

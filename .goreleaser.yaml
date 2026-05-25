@@ -1,0 +1,43 @@
+version: 2
+
+project_name: hsmc
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: hsmc
+    main: ./cmd/hsmc
+    binary: hsmc
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+archives:
+  - id: hsmc
+    ids:
+      - hsmc
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - cmd/hsmc/README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+
+release:
+  prerelease: auto
