@@ -81,6 +81,14 @@ hsmc -from go -to mermaid -in door.go -out door.mmd
 hsmc -from go -to plantuml -in door.go -out door.puml
 ```
 
+Convert a whole directory recursively:
+
+```sh
+hsmc -in ./machines -out ./generated/python -to python
+hsmc -in ./machines -out ./generated/diagrams -to mermaid
+hsmc -from go -to plantuml -in ./machines -out ./generated/plantuml
+```
+
 Pipe from stdin:
 
 ```sh

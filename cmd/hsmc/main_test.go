@@ -144,6 +144,169 @@ func TestInferLanguageFromPath(t *testing.T) {
 	}
 }
 
+func TestDirectoryCompileFileDiscoveryMirrorsRelativePaths(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "src")
+	output := filepath.Join(dir, "out")
+	for _, path := range []string{
+		filepath.Join(input, "door.go"),
+		filepath.Join(input, "nested", "timer.ts"),
+		filepath.Join(input, "transport.hsm.json"),
+		filepath.Join(input, "README.md"),
+		filepath.Join(output, "old.go"),
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(""), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	files, err := discoverDirectoryCompileFiles(input, output, "", hsmc.LanguageMermaid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]hsmc.Language{}
+	for _, file := range files {
+		relative, err := filepath.Rel(output, file.outputPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got[filepath.ToSlash(relative)] = file.from
+	}
+	want := map[string]hsmc.Language{
+		"door.mmd":         hsmc.LanguageGo,
+		"nested/timer.mmd": hsmc.LanguageTS,
+		"transport.mmd":    hsmc.LanguageJSONIR,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("discovered files = %#v, want %#v", got, want)
+	}
+	for path, language := range want {
+		if got[path] != language {
+			t.Fatalf("discovered %s language = %q, want %q; all files %#v", path, got[path], language, got)
+		}
+	}
+
+	filtered, err := discoverDirectoryCompileFiles(input, output, "go", hsmc.LanguagePython)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(filtered) != 1 || filepath.Base(filtered[0].outputPath) != "door.py" || filtered[0].from != hsmc.LanguageGo {
+		t.Fatalf("filtered files = %#v, want only Go door.py", filtered)
+	}
+}
+
+func TestMainCompilesDirectoryRecursivelyToDiagramTarget(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "src")
+	output := filepath.Join(dir, "diagrams")
+	writeTestFile(t, filepath.Join(input, "door.go"), directoryGoSource)
+	writeTestFile(t, filepath.Join(input, "nested", "door.ts"), directoryTypeScriptSource)
+	writeTestFile(t, filepath.Join(input, "README.md"), "# ignored\n")
+
+	command := exec.Command("go", "run", ".", "-in", input, "-out", output, "-to", "mermaid")
+	command.Env = append(os.Environ(), "ASDF_GOLANG_VERSION=1.25.1")
+	data, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go run hsmc directory to Mermaid failed: %v\n%s", err, data)
+	}
+
+	goDiagram := readTestFile(t, filepath.Join(output, "door.mmd"))
+	for _, needle := range []string{
+		"stateDiagram-v2",
+		`state "Door" as Door {`,
+		"Original go behavior entry_1 preserved for manual porting:",
+		`instance.Log = append(instance.Log, "entered")`,
+	} {
+		if !strings.Contains(goDiagram, needle) {
+			t.Fatalf("Go Mermaid diagram missing %q:\n%s", needle, goDiagram)
+		}
+	}
+	tsDiagram := readTestFile(t, filepath.Join(output, "nested", "door.mmd"))
+	for _, needle := range []string{
+		"stateDiagram-v2",
+		"Original typescript behavior entry_1 preserved for manual porting:",
+		`instance.log.push("entered");`,
+	} {
+		if !strings.Contains(tsDiagram, needle) {
+			t.Fatalf("TypeScript Mermaid diagram missing %q:\n%s", needle, tsDiagram)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(output, "README.mmd")); !os.IsNotExist(err) {
+		t.Fatalf("directory compile should not output unsupported README.mmd, stat err = %v", err)
+	}
+}
+
+func TestMainCompilesDirectoryRecursivelyToImplementationTarget(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "src")
+	output := filepath.Join(dir, "python")
+	writeTestFile(t, filepath.Join(input, "door.go"), directoryGoSource)
+	writeTestFile(t, filepath.Join(input, "nested", "timer.go"), strings.ReplaceAll(directoryGoSource, `"Door"`, `"Timer"`))
+
+	command := exec.Command("go", "run", ".", "-from", "go", "-to", "python", "-in", input, "-out", output)
+	command.Env = append(os.Environ(), "ASDF_GOLANG_VERSION=1.25.1")
+	data, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go run hsmc directory to Python failed: %v\n%s", err, data)
+	}
+	for _, path := range []string{
+		filepath.Join(output, "door.py"),
+		filepath.Join(output, "nested", "timer.py"),
+	} {
+		text := readTestFile(t, path)
+		for _, needle := range []string{
+			"import hsm",
+			"# Original go behavior entry_1 preserved for manual porting:",
+			`# instance.Log = append(instance.Log, "entered")`,
+		} {
+			if !strings.Contains(text, needle) {
+				t.Fatalf("Python output %s missing %q:\n%s", path, needle, text)
+			}
+		}
+	}
+}
+
+func TestMainCompilesDirectoryRecursivelyToJSONIR(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "src")
+	output := filepath.Join(dir, "ir")
+	writeTestFile(t, filepath.Join(input, "door.ts"), directoryTypeScriptSource)
+
+	command := exec.Command("go", "run", ".", "-to", "json-ir", "-in", input, "-out", output)
+	command.Env = append(os.Environ(), "ASDF_GOLANG_VERSION=1.25.1")
+	data, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go run hsmc directory to JSON IR failed: %v\n%s", err, data)
+	}
+	generated := readTestFile(t, filepath.Join(output, "door.hsm.json"))
+	var program hsmc.Program
+	if err := json.Unmarshal([]byte(generated), &program); err != nil {
+		t.Fatalf("directory JSON IR is invalid: %v\n%s", err, generated)
+	}
+	if program.SourceLanguage != hsmc.LanguageTS || len(program.Models) != 1 {
+		t.Fatalf("directory JSON IR program = %#v", program)
+	}
+}
+
+func TestMainRejectsDirectoryInputWithoutOutputDirectory(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "src")
+	writeTestFile(t, filepath.Join(input, "door.go"), directoryGoSource)
+
+	command := exec.Command("go", "run", ".", "-in", input, "-to", "mermaid")
+	command.Env = append(os.Environ(), "ASDF_GOLANG_VERSION=1.25.1")
+	data, err := command.CombinedOutput()
+	if err == nil {
+		t.Fatalf("go run hsmc unexpectedly accepted directory input without output:\n%s", data)
+	}
+	if !strings.Contains(string(data), "-out is required when -in is a directory") {
+		t.Fatalf("directory input missing output rejection:\n%s", data)
+	}
+}
+
 func TestCompileOptionsInferLanguages(t *testing.T) {
 	options := compileOptions("", "", "door.ts", "door.py", " none ")
 	if options.From != hsmc.LanguageTS || options.To != hsmc.LanguagePython || options.Adapter != "none" {
@@ -10819,6 +10982,65 @@ var DoorModel = hsm.Define(
 	hsm.Initial(hsm.Target("closed")),
 	hsm.State("closed", hsm.Entry(entered)),
 )
+`
+
+func writeTestFile(t *testing.T, path string, data string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readTestFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+const directoryGoSource = `package sample
+
+import hsm "github.com/stateforward/hsm.go"
+
+type Instance struct {
+	Log []string
+}
+
+var DoorModel = hsm.Define("Door",
+	hsm.Initial(hsm.Target("closed")),
+	hsm.State("closed",
+		hsm.Entry(func(ctx hsm.Context, instance *Instance, event hsm.Event) {
+			instance.Log = append(instance.Log, "entered")
+		}),
+		hsm.Transition(hsm.On("open"), hsm.Target("../open")),
+	),
+	hsm.State("open"),
+)
+`
+
+const directoryTypeScriptSource = `import * as hsm from "@stateforward/hsm.ts";
+
+class Door extends hsm.Instance {
+  log: string[] = [];
+}
+
+export const DoorModel = hsm.Define(
+  "Door",
+  hsm.Initial(hsm.Target("closed")),
+  hsm.State(
+    "closed",
+    hsm.Entry((ctx, instance: Door, event) => {
+      instance.log.push("entered");
+    }),
+    hsm.Transition(hsm.On("open"), hsm.Target("../open")),
+  ),
+  hsm.State("open"),
+);
 `
 
 func containsString(values []string, want string) bool {

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Adds recursive directory compilation for project/directory inputs, preserving relative paths while converting every supported source file to the requested target language.
 - Adds Mermaid and PlantUML target backends for generating state diagrams from HSM source code.
 - Preserves captured behavior and global source as diagram notes for manual review and porting context.
 

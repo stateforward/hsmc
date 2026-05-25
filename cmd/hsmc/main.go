@@ -66,10 +66,6 @@ func main() {
 	if inputPath == "" {
 		exitf("-in is required")
 	}
-	data, sourcePath, err := readInput(inputPath, os.Stdin)
-	if err != nil {
-		exitf("read input: %v", err)
-	}
 	adapterName = strings.TrimSpace(adapterName)
 	compiler := hsmc.NewCompiler()
 	switch adapterName {
@@ -80,6 +76,19 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+	if isDirectoryInput(inputPath) {
+		if printAdapterProtocol {
+			exitf("-print-adapter-protocol is not supported for directory input")
+		}
+		if err := compileDirectory(ctx, compiler, from, to, inputPath, outputPath, adapterName); err != nil {
+			exitf("compile directory: %v", err)
+		}
+		return
+	}
+	data, sourcePath, err := readInput(inputPath, os.Stdin)
+	if err != nil {
+		exitf("read input: %v", err)
+	}
 	options := compileOptions(from, to, sourcePath, outputPath, adapterName)
 	if printAdapterProtocol {
 		protocolOptions := adapterProtocolOptions(from, to, sourcePath, outputPath)
@@ -102,6 +111,188 @@ func main() {
 	}
 	if err := writeOutput(outputPath, output); err != nil {
 		exitf("write output: %v", err)
+	}
+}
+
+type directoryCompileFile struct {
+	inputPath  string
+	outputPath string
+	from       hsmc.Language
+	to         hsmc.Language
+}
+
+func compileDirectory(ctx context.Context, compiler *hsmc.Compiler, from string, to string, inputPath string, outputPath string, adapter string) error {
+	if strings.TrimSpace(outputPath) == "" {
+		return fmt.Errorf("-out is required when -in is a directory")
+	}
+	target := resolveDirectoryTargetLanguage(to)
+	files, err := discoverDirectoryCompileFiles(inputPath, outputPath, from, target)
+	if err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		return fmt.Errorf("no supported source files found in %s", inputPath)
+	}
+	for _, file := range files {
+		data, sourcePath, err := readInput(file.inputPath, os.Stdin)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", file.inputPath, err)
+		}
+		output, _, err := compiler.Compile(ctx, hsmc.SourceInput{Path: sourcePath, Data: data}, hsmc.CompileOptions{
+			From:    file.from,
+			To:      file.to,
+			Adapter: strings.TrimSpace(adapter),
+		})
+		if err != nil {
+			return fmt.Errorf("%s: %w", file.inputPath, err)
+		}
+		if err := writeOutput(file.outputPath, output); err != nil {
+			return fmt.Errorf("write %s: %w", file.outputPath, err)
+		}
+	}
+	return nil
+}
+
+func isDirectoryInput(path string) bool {
+	if path == "" || path == "-" {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func discoverDirectoryCompileFiles(inputDir string, outputDir string, from string, target hsmc.Language) ([]directoryCompileFile, error) {
+	if !isSupportedTargetLanguage(target) {
+		return nil, fmt.Errorf("unsupported target language %q", target)
+	}
+	sourceFilter := hsmc.Language("")
+	if strings.TrimSpace(from) != "" {
+		sourceFilter = parseLanguage(from)
+		if !isSupportedSourceLanguage(sourceFilter) {
+			return nil, fmt.Errorf("unsupported source language %q", sourceFilter)
+		}
+	}
+	absOutputDir := ""
+	if outputDir != "" {
+		if abs, err := filepath.Abs(outputDir); err == nil {
+			absOutputDir = abs
+		}
+	}
+	var files []directoryCompileFile
+	err := filepath.WalkDir(inputDir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			if absOutputDir != "" {
+				if absPath, err := filepath.Abs(path); err == nil && absPath == absOutputDir && path != inputDir {
+					return filepath.SkipDir
+				}
+			}
+			name := entry.Name()
+			if name == ".git" || name == "node_modules" || name == "vendor" || name == "dist" || name == "build" {
+				if path != inputDir {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		sourceLanguage, ok := inferLanguageFromPath(path)
+		if !ok || !isSupportedSourceLanguage(sourceLanguage) {
+			return nil
+		}
+		if sourceFilter != "" && sourceLanguage != sourceFilter {
+			return nil
+		}
+		relative, err := filepath.Rel(inputDir, path)
+		if err != nil {
+			return err
+		}
+		files = append(files, directoryCompileFile{
+			inputPath:  path,
+			outputPath: filepath.Join(outputDir, outputRelativePath(relative, target)),
+			from:       sourceLanguage,
+			to:         target,
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+func resolveDirectoryTargetLanguage(to string) hsmc.Language {
+	if strings.TrimSpace(to) != "" {
+		return parseLanguage(to)
+	}
+	return hsmc.LanguageGo
+}
+
+func isSupportedSourceLanguage(language hsmc.Language) bool {
+	for _, supported := range hsmc.SupportedSourceLanguages() {
+		if language == supported {
+			return true
+		}
+	}
+	return false
+}
+
+func isSupportedTargetLanguage(language hsmc.Language) bool {
+	for _, supported := range hsmc.SupportedTargetLanguages() {
+		if language == supported {
+			return true
+		}
+	}
+	return false
+}
+
+func outputRelativePath(relative string, target hsmc.Language) string {
+	return trimSourceExtension(relative) + targetExtension(target)
+}
+
+func trimSourceExtension(path string) string {
+	lower := strings.ToLower(path)
+	if strings.HasSuffix(lower, ".hsm.json") {
+		return path[:len(path)-len(".hsm.json")]
+	}
+	extension := filepath.Ext(path)
+	if extension == "" {
+		return path
+	}
+	return strings.TrimSuffix(path, extension)
+}
+
+func targetExtension(target hsmc.Language) string {
+	switch target {
+	case hsmc.LanguageCSharp:
+		return ".cs"
+	case hsmc.LanguageCPP:
+		return ".cpp"
+	case hsmc.LanguageDart:
+		return ".dart"
+	case hsmc.LanguageGo:
+		return ".go"
+	case hsmc.LanguageJava:
+		return ".java"
+	case hsmc.LanguageJS:
+		return ".js"
+	case hsmc.LanguageJSONIR:
+		return ".hsm.json"
+	case hsmc.LanguageMermaid:
+		return ".mmd"
+	case hsmc.LanguagePlantUML:
+		return ".puml"
+	case hsmc.LanguagePython:
+		return ".py"
+	case hsmc.LanguageRust:
+		return ".rs"
+	case hsmc.LanguageTS:
+		return ".ts"
+	case hsmc.LanguageZig:
+		return ".zig"
+	default:
+		return "." + string(target)
 	}
 }
 
