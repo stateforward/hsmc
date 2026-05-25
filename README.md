@@ -1,33 +1,183 @@
 # hsmc
 
-`hsmc` is the monorepo-level HSM compiler. It translates HSM DSL structure between supported implementation languages while keeping model structure compiler-owned.
+`hsmc` is the StateForward HSM compiler.
 
-The compiler owns parsing, IR lowering, validation, signatures, structural imports, and target model emission. Coding-agent adapters own only mutable implementation code: behavior bodies, helper globals, and the imports needed by those translated code regions. If no adapter is used, foreign behavior code is preserved as target-language comments inside generated target behavior bodies, while foreign globals are preserved as target-language comments near the top-level output for manual porting.
+It converts StateForward HSM definitions between implementation languages while keeping the state machine model deterministic and reviewable. The compiler translates the HSM structure. Coding-agent adapters, such as Codex, can translate the host-language behavior bodies.
 
-The CLI entrypoint is in `cmd/hsmc`. See [cmd/hsmc/README.md](cmd/hsmc/README.md) for language support, adapter protocol details, and CLI usage.
+```text
+source HSM code -> tree-sitter frontend -> HSM IR -> validator -> target backend
+                                                   -> optional behavior adapter
+```
+
+## Why
+
+State machines often outlive the language they were first written in. `hsmc` is built for moving those models across runtimes without turning the model itself into an AI-generated guess.
+
+The compiler owns the parts that need to be exact:
+
+- models, states, pseudostates, transitions, triggers, events, defers, attributes, and operation references
+- behavior names, signatures, and target ABI
+- runtime scaffolding and compiler-owned imports
+- validation before and after adapter patches
+
+Adapters own the parts that are inherently language-specific:
+
+- behavior bodies
+- helper/global code used by those bodies
+- target-language imports needed by translated code
+
+If you do not use an adapter, `hsmc` still emits the target HSM. Foreign behavior is preserved as target-language comments inside the generated target behavior body, and foreign globals are preserved as comments near the top of the output so you can port them manually.
+
+## Status
+
+`hsmc` is in alpha.
+
+The compiler and adapter boundary are covered by the Go test suite, and the release workflow publishes Linux amd64 binaries. Native tree-sitter grammars currently require cgo; broader no-cgo cross-platform binaries are planned with a WASM tree-sitter parser layer.
 
 ## Install
 
-For the alpha release, install from source with Go:
+Install with Go:
 
 ```sh
 go install github.com/stateforward/hsmc/cmd/hsmc@v0.1.0-alpha.1
 ```
 
-Native tree-sitter grammars currently require cgo. Release binaries are intentionally conservative until the parser layer moves to WASM grammars for no-cgo cross-platform builds.
+Or download a release artifact from:
 
-## Verification
+```text
+https://github.com/stateforward/hsmc/releases
+```
 
-Run the normal compiler suite from `hsmc/`:
+Check the installed version:
+
+```sh
+hsmc -version
+```
+
+## Quick Start
+
+Convert a Go HSM definition to TypeScript:
+
+```sh
+hsmc -from go -to typescript -in door.go -out door.ts
+```
+
+Infer languages from file extensions:
+
+```sh
+hsmc -in door.py -out door.go
+```
+
+Emit JSON IR:
+
+```sh
+hsmc -from typescript -to json-ir -in door.ts -out door.hsm.json
+```
+
+Pipe from stdin:
+
+```sh
+cat door.go | hsmc -from go -to python -in -
+```
+
+List supported languages:
+
+```sh
+hsmc -list-source-languages
+hsmc -list-target-languages
+```
+
+## Using Codex For Behavior Porting
+
+Without an adapter, untranslated behavior is commented in place:
+
+```python
+async def entry_1(ctx, instance, event) -> None:
+    # Original go behavior entry_1 preserved for manual porting:
+    # instance.Log = append(instance.Log, "entered")
+    return None
+```
+
+With the Codex adapter, `hsmc` asks Codex to translate only editable behavior/global code and target imports:
+
+```sh
+hsmc \
+  -from go \
+  -to python \
+  -adapter codex \
+  -adapter-command codex \
+  -in door.go \
+  -out door.py
+```
+
+The compiler rejects adapter patches that try to alter compiler-owned model structure, including models, events, states, transitions, behavior IDs, signatures, source languages, and target ABI.
+
+For custom integrations, use `-adapter command` with any executable that speaks the same JSON patch protocol.
+
+## Supported Languages
+
+Source languages:
+
+- C#
+- C++
+- Dart
+- Go
+- Java
+- JavaScript
+- Python
+- Rust
+- TypeScript
+- Zig
+- JSON IR
+
+Target languages:
+
+- C#
+- C++
+- Dart
+- Go
+- Java
+- JavaScript
+- Python
+- Rust
+- TypeScript
+- Zig
+- JSON IR
+
+## Design Boundary
+
+`hsmc` is a structural HSM compiler, not a general-purpose semantic compiler for arbitrary host-language code.
+
+That boundary is intentional. The model is compiled deterministically; behavior bodies are either preserved for manual porting or delegated to an adapter with a narrow, validated patch surface.
+
+Runtime/helper declarations such as `Config`, `Queue`, `Clock`, `MakeGroup`, `MakeKind`, `IsKind`, and `TakeSnapshot` are treated as adapter-owned global context rather than model IR. They can be translated by an adapter or preserved as comments for manual porting.
+
+## Development
+
+Run the normal test suite:
 
 ```sh
 go test ./...
 ```
 
-To verify generated target code against installed language toolchains, run the opt-in smoke suite:
+Run vet:
 
 ```sh
-HSMC_EXTERNAL_SMOKE=1 go test ./internal/hsmc -run 'TestExternalGeneratedTargetSmoke|TestExternalJSONIRSourceToGeneratedTargetsSmoke|TestExternalAdapterTargetSmoke|TestExternalSupportedSourcesToGoSmoke|TestExternalForeignSourcesToTypeScriptSmoke|TestExternalForeignSourcesToPythonSmoke|TestExternalForeignSourcesToJavaScriptSmoke|TestExternalForeignSourcesToDartSmoke|TestExternalForeignSourcesToCPPSmoke|TestExternalForeignSourcesToCSharpSmoke|TestExternalForeignSourcesToJavaSmoke|TestExternalForeignSourcesToZigSmoke|TestExternalForeignSourcesToRustSmoke|TestExternalTypeScriptSourceToTypeScriptSmoke|TestExternalPythonSourceToPythonSmoke|TestExternalJavaScriptSourceToJavaScriptSmoke|TestExternalDartSourceToDartSmoke|TestExternalZigSourceToZigSmoke|TestExternalCSharpSourceToCSharpSmoke|TestExternalJavaSourceToJavaSmoke|TestExternalCPPSourceToCPPSmoke|TestExternalRustSourceToRustSmoke' -count=1
+go vet ./...
 ```
 
-The smoke suite compiles or checks generated Go, Python, JavaScript, TypeScript, C++, C#, Java, Dart, Zig, and Rust outputs when those tools are available, and includes JSON IR transport-to-target checks, no-adapter cross-source checks for generated Go and foreign-source output to TypeScript, Python, JavaScript, Dart, C++, C#, Java, Zig, and Rust, adapter-filled foreign-source-to-Go, foreign-source-to-Python, foreign-source-to-JavaScript, foreign-source-to-TypeScript, foreign-source-to-Dart, foreign-source-to-C++, foreign-source-to-C#, foreign-source-to-Java, foreign-source-to-Zig, and foreign-source-to-Rust behavior output, same-language TypeScript re-emission, same-language Python re-emission, same-language JavaScript re-emission, same-language Dart re-emission, same-language Zig re-emission, same-language C# re-emission, same-language Java re-emission, same-language C++ re-emission, and same-language Rust re-emission. Generated-Go smoke legs are skipped when the active Go toolchain is older than the sibling `hsm.go` runtime module's required Go version.
+Run generated-target smoke tests against installed language toolchains:
+
+```sh
+HSMC_EXTERNAL_SMOKE=1 go test ./internal/hsmc -run 'TestExternal' -count=1
+```
+
+When running the external smoke suite from the standalone repository, set `HSMC_MONOREPO_ROOT` if the tests need sibling runtime repositories:
+
+```sh
+HSMC_MONOREPO_ROOT=/path/to/hsm HSMC_EXTERNAL_SMOKE=1 go test ./internal/hsmc -run 'TestExternal' -count=1
+```
+
+## More Detail
+
+See [cmd/hsmc/README.md](cmd/hsmc/README.md) for the full CLI reference, adapter protocol, import rules, and requirement/test map.
