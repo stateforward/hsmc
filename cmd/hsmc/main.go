@@ -224,6 +224,10 @@ func inferLanguageFromPath(path string) (hsmc.Language, bool) {
 		return hsmc.LanguageJS, true
 	case ".json":
 		return hsmc.LanguageJSONIR, true
+	case ".mmd", ".mermaid":
+		return hsmc.LanguageMermaid, true
+	case ".puml", ".plantuml":
+		return hsmc.LanguagePlantUML, true
 	case ".py":
 		return hsmc.LanguagePython, true
 	case ".rs":

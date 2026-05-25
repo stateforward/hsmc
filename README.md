@@ -74,6 +74,13 @@ Emit JSON IR:
 hsmc -from typescript -to json-ir -in door.ts -out door.hsm.json
 ```
 
+Generate a diagram from source code:
+
+```sh
+hsmc -from go -to mermaid -in door.go -out door.mmd
+hsmc -from go -to plantuml -in door.go -out door.puml
+```
+
 Pipe from stdin:
 
 ```sh
@@ -143,6 +150,8 @@ Target languages:
 - TypeScript
 - Zig
 - JSON IR
+- Mermaid
+- PlantUML
 
 ## Design Boundary
 
@@ -151,6 +160,8 @@ Target languages:
 That boundary is intentional. The model is compiled deterministically; behavior bodies are either preserved for manual porting or delegated to an adapter with a narrow, validated patch surface.
 
 Runtime/helper declarations such as `Config`, `Queue`, `Clock`, `MakeGroup`, `MakeKind`, `IsKind`, and `TakeSnapshot` are treated as adapter-owned global context rather than model IR. They can be translated by an adapter or preserved as comments for manual porting.
+
+Diagram targets are adapter-free. Mermaid and PlantUML output includes state hierarchy, initial transitions, transition labels, and notes containing captured behavior/global source so generated diagrams carry the implementation context from the original code.
 
 ## Development
 
@@ -169,13 +180,13 @@ go vet ./...
 Run generated-target smoke tests against installed language toolchains:
 
 ```sh
-HSMC_EXTERNAL_SMOKE=1 go test ./internal/hsmc -run 'TestExternal' -count=1
+HSMC_EXTERNAL_SMOKE=1 go test ./internal/hsmc -run 'External' -count=1
 ```
 
 When running the external smoke suite from the standalone repository, set `HSMC_MONOREPO_ROOT` if the tests need sibling runtime repositories:
 
 ```sh
-HSMC_MONOREPO_ROOT=/path/to/hsm HSMC_EXTERNAL_SMOKE=1 go test ./internal/hsmc -run 'TestExternal' -count=1
+HSMC_MONOREPO_ROOT=/path/to/hsm HSMC_EXTERNAL_SMOKE=1 go test ./internal/hsmc -run 'External' -count=1
 ```
 
 ## More Detail

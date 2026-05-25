@@ -4,17 +4,19 @@ package hsmc
 type Language string
 
 const (
-	LanguageCSharp Language = "csharp"
-	LanguageCPP    Language = "cpp"
-	LanguageDart   Language = "dart"
-	LanguageGo     Language = "go"
-	LanguageJava   Language = "java"
-	LanguageJS     Language = "javascript"
-	LanguageJSONIR Language = "json-ir"
-	LanguagePython Language = "python"
-	LanguageRust   Language = "rust"
-	LanguageTS     Language = "typescript"
-	LanguageZig    Language = "zig"
+	LanguageCSharp   Language = "csharp"
+	LanguageCPP      Language = "cpp"
+	LanguageDart     Language = "dart"
+	LanguageGo       Language = "go"
+	LanguageJava     Language = "java"
+	LanguageJS       Language = "javascript"
+	LanguageJSONIR   Language = "json-ir"
+	LanguageMermaid  Language = "mermaid"
+	LanguagePlantUML Language = "plantuml"
+	LanguagePython   Language = "python"
+	LanguageRust     Language = "rust"
+	LanguageTS       Language = "typescript"
+	LanguageZig      Language = "zig"
 )
 
 // SourceRange ties IR nodes back to their parsed source. Byte offsets are

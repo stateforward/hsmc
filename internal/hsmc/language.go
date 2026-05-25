@@ -28,6 +28,8 @@ var supportedTargetLanguages = []Language{
 	LanguageRust,
 	LanguageZig,
 	LanguageJSONIR,
+	LanguageMermaid,
+	LanguagePlantUML,
 }
 
 // SupportedLanguages returns the canonical language IDs understood by hsmc as
@@ -78,6 +80,10 @@ func ParseLanguage(value string) (Language, bool) {
 		return LanguageZig, true
 	case "ir", "json", "json-ir":
 		return LanguageJSONIR, true
+	case "mermaid", "mmd":
+		return LanguageMermaid, true
+	case "plantuml", "puml", "plant":
+		return LanguagePlantUML, true
 	default:
 		return "", false
 	}

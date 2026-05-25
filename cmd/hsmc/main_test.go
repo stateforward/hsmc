@@ -82,6 +82,11 @@ func TestParseLanguageOtherAliases(t *testing.T) {
 		"ir":         hsmc.LanguageJSONIR,
 		"json":       hsmc.LanguageJSONIR,
 		"json-ir":    hsmc.LanguageJSONIR,
+		"mermaid":    hsmc.LanguageMermaid,
+		"mmd":        hsmc.LanguageMermaid,
+		"plant":      hsmc.LanguagePlantUML,
+		"plantuml":   hsmc.LanguagePlantUML,
+		"puml":       hsmc.LanguagePlantUML,
 	}
 	for alias, want := range cases {
 		if got := parseLanguage(alias); got != want {
@@ -116,6 +121,10 @@ func TestInferLanguageFromPath(t *testing.T) {
 		"door.jsx":      hsmc.LanguageJS,
 		"door.mjs":      hsmc.LanguageJS,
 		"door.hsm.json": hsmc.LanguageJSONIR,
+		"door.mermaid":  hsmc.LanguageMermaid,
+		"door.mmd":      hsmc.LanguageMermaid,
+		"door.plantuml": hsmc.LanguagePlantUML,
+		"door.puml":     hsmc.LanguagePlantUML,
 		"door.py":       hsmc.LanguagePython,
 		"door.rs":       hsmc.LanguageRust,
 		"door.cts":      hsmc.LanguageTS,
@@ -10718,14 +10727,29 @@ func TestCompilerLanguageListsExposeSourceTargetSplit(t *testing.T) {
 		"zig",
 		"json-ir",
 	}, "\n")
+	wantTargets := strings.Join([]string{
+		"csharp",
+		"cpp",
+		"dart",
+		"go",
+		"java",
+		"javascript",
+		"python",
+		"typescript",
+		"rust",
+		"zig",
+		"json-ir",
+		"mermaid",
+		"plantuml",
+	}, "\n")
 	if got := formatLanguages(hsmc.SupportedSourceLanguages()); got != want {
 		t.Fatalf("source language list = %q, want %q", got, want)
 	}
-	if got := formatLanguages(hsmc.SupportedTargetLanguages()); got != want {
-		t.Fatalf("target language list = %q, want %q", got, want)
+	if got := formatLanguages(hsmc.SupportedTargetLanguages()); got != wantTargets {
+		t.Fatalf("target language list = %q, want %q", got, wantTargets)
 	}
-	if got := formatLanguages(hsmc.SupportedLanguages()); got != want {
-		t.Fatalf("combined language list = %q, want %q", got, want)
+	if got := formatLanguages(hsmc.SupportedLanguages()); got != wantTargets {
+		t.Fatalf("combined language list = %q, want %q", got, wantTargets)
 	}
 }
 

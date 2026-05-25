@@ -118,6 +118,8 @@ func NewCompiler() *Compiler {
 	compiler.RegisterBackend(NewJavaBackend())
 	compiler.RegisterBackend(NewJavaScriptBackend())
 	compiler.RegisterBackend(NewJSONIRBackend())
+	compiler.RegisterBackend(NewMermaidBackend())
+	compiler.RegisterBackend(NewPlantUMLBackend())
 	compiler.RegisterBackend(NewPythonBackend())
 	compiler.RegisterBackend(NewRustBackend())
 	compiler.RegisterBackend(NewTypeScriptBackend())
@@ -305,7 +307,7 @@ func behaviorAdapterRequested(name string) bool {
 }
 
 func isImplementationLanguage(language Language) bool {
-	return language != "" && language != LanguageJSONIR
+	return language != "" && language != LanguageJSONIR && language != LanguageMermaid && language != LanguagePlantUML
 }
 
 func buildAdapterRequest(program *Program, target Language) AdapterRequest {

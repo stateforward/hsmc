@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Adds Mermaid and PlantUML target backends for generating state diagrams from HSM source code.
+- Preserves captured behavior and global source as diagram notes for manual review and porting context.
+
 ## v0.1.0-alpha.1
 
 Initial alpha release candidate.
