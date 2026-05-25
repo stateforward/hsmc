@@ -11,7 +11,7 @@ source HSM code -> tree-sitter frontend -> HSM IR -> validator -> target backend
 
 ## Why
 
-State machines often outlive the language they were first written in. `hsmc` is built for moving those models across runtimes without turning the model itself into an AI-generated guess.
+State machines are often easiest to explore in fast-prototyping languages and environments, but production deployments may need the same behavior in a higher-performance implementation language. `hsmc` is built for carrying those models from prototype to production without turning the model itself into an AI-generated guess.
 
 The compiler owns the parts that need to be exact:
 
