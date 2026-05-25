@@ -33,12 +33,16 @@ Current source languages:
 - `zig`
 - `ir`, `json`, `json-ir`
 
+Additional target-only implementation languages:
+
+- `xstate`, `x-state`
+
 Additional target-only diagram languages:
 
 - `mermaid`, `mmd`
 - `plantuml`, `puml`, `plant`
 
-Canonical compiler implementation and transport language IDs are `csharp`, `cpp`, `dart`, `go`, `java`, `javascript`, `python`, `typescript`, `rust`, `zig`, and `json-ir`; target-only diagram IDs are `mermaid` and `plantuml`. The other names are CLI aliases. Every supported source can compile to every supported target. Behavior bodies that have not been translated to an implementation target are preserved as target-language comments inside the generated target behavior body, followed by the minimal target-language no-op or default return needed to keep the output editable. Globals that have not been translated to an implementation target are preserved as target-language comments near the top of the generated output. Diagram targets preserve captured behavior/global source as Mermaid or PlantUML notes attached to the relevant states or model.
+Canonical compiler implementation and transport language IDs are `csharp`, `cpp`, `dart`, `go`, `java`, `javascript`, `python`, `typescript`, `xstate`, `rust`, `zig`, and `json-ir`; target-only diagram IDs are `mermaid` and `plantuml`. The other names are CLI aliases. Every supported source can compile to every supported target. Behavior bodies that have not been translated to an implementation target are preserved as target-language comments inside the generated target behavior body, followed by the minimal target-language no-op or default return needed to keep the output editable. Globals that have not been translated to an implementation target are preserved as target-language comments near the top of the generated output. Diagram targets preserve captured behavior/global source as Mermaid or PlantUML notes attached to the relevant states or model.
 
 JSON IR is a transport format. A JSON IR input must include `source_language` set to the original implementation language, not `json-ir`, so the compiler can preserve source import context and tell adapters what language behavior/global code came from.
 
@@ -66,7 +70,7 @@ When `-from` is omitted, `hsmc` infers the source language from `-in` when the i
 
 Known extensions include `.cs`, `.csx`, `.c++`, `.cc`, `.cpp`, `.cppm`, `.cxx`, `.h`, `.h++`, `.hh`, `.hpp`, `.hxx`, `.inl`, `.ipp`, `.ixx`, `.mpp`, `.tpp`, `.dart`, `.go`, `.java`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.hsm.json`, `.json`, `.mmd`, `.mermaid`, `.puml`, `.plantuml`, `.py`, `.rs`, `.ts`, `.tsx`, `.mts`, `.cts`, and `.zig`.
 
-When `-in` is a directory, `hsmc` recursively compiles every supported source file below that directory and writes outputs below the required `-out` directory while preserving relative paths. The target extension is selected from `-to`, such as `.py`, `.ts`, `.hsm.json`, `.mmd`, or `.puml`. If `-from` is omitted, each file's source language is inferred independently; if `-from` is present, only matching source files are compiled. Unsupported files are skipped. Common generated or dependency directories such as `.git`, `node_modules`, `vendor`, `dist`, and `build` are skipped, and an output directory nested below the input directory is not walked as input. Directory input does not support `-print-adapter-protocol`.
+When `-in` is a directory, `hsmc` recursively compiles every supported source file below that directory and writes outputs below the required `-out` directory while preserving relative paths. The target extension is selected from `-to`, such as `.py`, `.ts`, `.xstate.ts`, `.hsm.json`, `.mmd`, or `.puml`. If `-from` is omitted, each file's source language is inferred independently; if `-from` is present, only matching source files are compiled. Unsupported files are skipped. Common generated or dependency directories such as `.git`, `node_modules`, `vendor`, `dist`, and `build` are skipped, and an output directory nested below the input directory is not walked as input. Directory input does not support `-print-adapter-protocol`.
 
 Use `-in -` to read source from stdin. `-out` is optional; when omitted, `hsmc` writes to stdout.
 

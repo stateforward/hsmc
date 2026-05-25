@@ -156,6 +156,7 @@ Target languages:
 - Python
 - Rust
 - TypeScript
+- XState
 - Zig
 - JSON IR
 - Mermaid

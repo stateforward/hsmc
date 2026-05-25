@@ -29,6 +29,8 @@ func BehaviorABIForTrigger(language Language, kind BehaviorKind, triggerKind Tri
 		return jsBehaviorABI(kind, triggerKind)
 	case LanguageTS:
 		return tsBehaviorABI(kind, triggerKind)
+	case LanguageXState:
+		return xstateBehaviorABI(kind, triggerKind)
 	case LanguagePython:
 		return pythonBehaviorABI(kind, triggerKind)
 	case LanguageRust:
@@ -220,6 +222,32 @@ func tsBehaviorABI(kind BehaviorKind, triggerKind TriggerKind) *BehaviorABI {
 			{Name: "ctx", Type: "hsm.Context"},
 			{Name: "instance", Type: "InstanceType<typeof hsm.Instance>"},
 			{Name: "event", Type: "hsm.Event"},
+		},
+	}
+}
+
+func xstateBehaviorABI(kind BehaviorKind, triggerKind TriggerKind) *BehaviorABI {
+	returnType := "void"
+	if kind == BehaviorGuard {
+		returnType = "boolean"
+	} else if kind == BehaviorTrigger {
+		switch triggerKind {
+		case TriggerAfter, TriggerEvery:
+			returnType = "number | Promise<number>"
+		case TriggerAt:
+			returnType = "Date | Promise<Date>"
+		case TriggerWhen:
+			returnType = "boolean | Promise<boolean>"
+		default:
+			returnType = "unknown"
+		}
+	}
+	return &BehaviorABI{
+		Language:   LanguageXState,
+		Signature:  "function(args: XStateBehaviorArgs): " + returnType,
+		ReturnType: returnType,
+		Parameters: []ABIParameter{
+			{Name: "args", Type: "XStateBehaviorArgs"},
 		},
 	}
 }

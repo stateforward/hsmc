@@ -289,6 +289,8 @@ func targetExtension(target hsmc.Language) string {
 		return ".rs"
 	case hsmc.LanguageTS:
 		return ".ts"
+	case hsmc.LanguageXState:
+		return ".xstate.ts"
 	case hsmc.LanguageZig:
 		return ".zig"
 	default:

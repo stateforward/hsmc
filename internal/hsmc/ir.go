@@ -16,6 +16,7 @@ const (
 	LanguagePython   Language = "python"
 	LanguageRust     Language = "rust"
 	LanguageTS       Language = "typescript"
+	LanguageXState   Language = "xstate"
 	LanguageZig      Language = "zig"
 )
 

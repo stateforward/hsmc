@@ -123,6 +123,7 @@ func NewCompiler() *Compiler {
 	compiler.RegisterBackend(NewPythonBackend())
 	compiler.RegisterBackend(NewRustBackend())
 	compiler.RegisterBackend(NewTypeScriptBackend())
+	compiler.RegisterBackend(NewXStateBackend())
 	compiler.RegisterBackend(NewZigBackend())
 	compiler.RegisterAdapter(IdentityAdapter{})
 	compiler.RegisterAdapter(CodexAdapter{})
@@ -724,7 +725,7 @@ func validateGeneratedTopLevelSymbolUniqueness(program *Program, target Language
 
 func generatedTopLevelSymbolUses(program *Program, target Language) []generatedTopLevelSymbolUse {
 	switch target {
-	case LanguageCPP, LanguageCSharp, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageRust, LanguageTS, LanguageZig:
+	case LanguageCPP, LanguageCSharp, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageRust, LanguageTS, LanguageXState, LanguageZig:
 	default:
 		return nil
 	}
@@ -782,7 +783,7 @@ func isGeneratedTopLevelSymbolValid(target Language, symbol string) bool {
 		return !cppReservedIdentifier(symbol)
 	case LanguageDart:
 		return !dartReservedIdentifier(symbol)
-	case LanguageJS, LanguageTS:
+	case LanguageJS, LanguageTS, LanguageXState:
 		return !esReservedIdentifier(symbol)
 	case LanguagePython:
 		return !pythonReservedIdentifier(symbol)
@@ -953,7 +954,7 @@ func targetTopLevelDeclarationName(target Language, code string) (string, bool) 
 			return name, true
 		}
 		return keywordTypeDeclarationName(code, "struct", "enum", "type", "trait", "union", "mod")
-	case LanguageTS, LanguageJS:
+	case LanguageTS, LanguageJS, LanguageXState:
 		return esTopLevelDeclarationName(code)
 	case LanguageZig:
 		if name, ok := zigFunctionDeclarationName(code); ok {
@@ -1005,7 +1006,7 @@ func targetTopLevelDeclarationNames(target Language, code string) []string {
 				continue
 			}
 		}
-		if target == LanguageJS || target == LanguageTS {
+		if target == LanguageJS || target == LanguageTS || target == LanguageXState {
 			if esImportNames := esImportDeclarationNames(construct); len(esImportNames) > 0 {
 				names = append(names, esImportNames...)
 				next := strings.TrimSpace(remainderAfterFirstTopLevelConstruct(remaining))
@@ -1153,7 +1154,7 @@ func goIdentifierListSegmentName(segment string) string {
 
 func sameStatementDeclarationNames(target Language, code string) []string {
 	switch target {
-	case LanguageCPP, LanguageCSharp, LanguageDart, LanguageJava, LanguageJS, LanguageTS:
+	case LanguageCPP, LanguageCSharp, LanguageDart, LanguageJava, LanguageJS, LanguageTS, LanguageXState:
 	default:
 		return nil
 	}
@@ -1311,7 +1312,7 @@ func behaviorSymbolFor(target Language, id string) string {
 		return exportName(id)
 	case LanguagePython:
 		return snakeName(id)
-	case LanguageDart, LanguageJS, LanguageTS:
+	case LanguageDart, LanguageJS, LanguageTS, LanguageXState:
 		return lowerCamel(exportName(id))
 	default:
 		return ""
@@ -1328,7 +1329,7 @@ func modelSymbolFor(target Language, name string) string {
 		return snakeName(name) + "_model"
 	case LanguageDart:
 		return lowerCamel(exportName(name)) + "Model"
-	case LanguageJS, LanguageTS:
+	case LanguageJS, LanguageTS, LanguageXState:
 		return exportName(name) + "Model"
 	default:
 		return ""
@@ -1805,6 +1806,8 @@ func compilerOwnedImports(target Language) []string {
 		return []string{"@stateforward/hsm", "javascript", "javascript.Date", "javascript.undefined"}
 	case LanguageTS:
 		return []string{"@stateforward/hsm.ts", "@stateforward/hsm", "typescript", "typescript.Date", "typescript.InstanceType", "typescript.Promise", "typescript.undefined"}
+	case LanguageXState:
+		return []string{"xstate", "xstate.fromCallback", "xstate.setup", "typescript", "typescript.Date", "typescript.Promise", "typescript.undefined"}
 	case LanguagePython:
 		return []string{"hsm", "datetime", "typing", "builtins", "builtins.False", "builtins.None", "builtins.True", "builtins.bool", "builtins.float"}
 	case LanguageRust:
@@ -1873,20 +1876,21 @@ func targetImportShape(target Language) ImportShapeRules {
 				"Aliases, default imports, and named specifiers are rejected except source-context wildcard specifiers.",
 			},
 		}
-	case LanguageJS, LanguageTS:
+	case LanguageJS, LanguageTS, LanguageXState:
 		return ImportShapeRules{
 			Language:                  target,
 			SupportsBareImport:        true,
 			SupportsDefaultImport:     true,
 			SupportsNamedSpecifiers:   true,
 			SupportsNamespaceAlias:    true,
-			SupportsTypeOnlyImport:    target == LanguageTS,
-			SupportsSpecifierTypeOnly: target == LanguageTS,
+			SupportsTypeOnlyImport:    target == LanguageTS || target == LanguageXState,
+			SupportsSpecifierTypeOnly: target == LanguageTS || target == LanguageXState,
 			DisallowAliasWithMembers:  true,
 			Notes: []string{
 				"Use alias for namespace imports only, for example import * as alias from path.",
 				"Do not combine namespace alias with default or named specifiers.",
 				"Type-only imports and type-only named specifiers are supported only for TypeScript.",
+				"Type-only imports and type-only named specifiers are supported only for TypeScript-family targets.",
 			},
 		}
 	case LanguagePython:
@@ -2029,7 +2033,7 @@ func validateImportShape(imp Import, target Language, context string) error {
 	if imp.Deferred && target != LanguageDart {
 		return fmt.Errorf("%s import %q uses deferred import unsupported by %s", context, imp.Path, target)
 	}
-	if imp.TypeOnly && target != LanguageTS {
+	if imp.TypeOnly && target != LanguageTS && target != LanguageXState {
 		return fmt.Errorf("%s import %q uses type-only import unsupported by %s", context, imp.Path, target)
 	}
 	localNames := map[string]bool{}
@@ -2065,7 +2069,7 @@ func validateImportShape(imp Import, target Language, context string) error {
 		return fmt.Errorf("%s import %q alias binding %q contains surrounding whitespace", context, imp.Path, imp.Alias)
 	}
 	for _, specifier := range imp.Specifiers {
-		if specifier.TypeOnly && target != LanguageTS {
+		if specifier.TypeOnly && target != LanguageTS && target != LanguageXState {
 			return fmt.Errorf("%s import %q specifier %q uses type-only import unsupported by %s", context, imp.Path, specifier.Name, target)
 		}
 		if strings.TrimSpace(specifier.Name) == "" {
@@ -2132,7 +2136,7 @@ func validateImportShape(imp Import, target Language, context string) error {
 				return fmt.Errorf("%s import %q uses specifier alias %q unsupported by Dart", context, imp.Path, specifier.Alias)
 			}
 		}
-	case LanguageJS, LanguageTS:
+	case LanguageJS, LanguageTS, LanguageXState:
 		if len(imp.Hidden) > 0 {
 			return fmt.Errorf("%s import %q uses hidden specifiers unsupported by %s", context, imp.Path, target)
 		}
@@ -2331,7 +2335,7 @@ func importBindings(imp Import, target Language) []importBinding {
 				add(specifier.Name, imp.Path+"\x00specifier\x00"+specifier.Name)
 			}
 		}
-	case LanguageJS, LanguageTS:
+	case LanguageJS, LanguageTS, LanguageXState:
 		add(imp.Default, imp.Path+"\x00default")
 		add(imp.Alias, imp.Path+"\x00namespace")
 		for _, specifier := range imp.Specifiers {
@@ -2669,6 +2673,11 @@ func compilerOwnedBindingImports(target Language) []Import {
 		return []Import{
 			{Path: "@stateforward/hsm.ts", Alias: "hsm", Language: target},
 			{Path: "typescript", Language: target, Specifiers: []ImportSpecifier{{Name: "Date"}, {Name: "InstanceType"}, {Name: "Promise"}, {Name: "undefined"}}},
+		}
+	case LanguageXState:
+		return []Import{
+			{Path: "xstate", Language: target, Specifiers: []ImportSpecifier{{Name: "fromCallback"}, {Name: "setup"}}},
+			{Path: "typescript", Language: target, Specifiers: []ImportSpecifier{{Name: "Date"}, {Name: "Promise"}, {Name: "undefined"}}},
 		}
 	case LanguagePython:
 		return []Import{

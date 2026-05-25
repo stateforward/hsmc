@@ -72,7 +72,7 @@ func importMergeKey(imp Import, target Language) string {
 	if imp.Alias != "" {
 		return strings.Join([]string{path, string(imp.Language), static, deferred, typeOnly, "alias", imp.Alias, "hidden", strings.Join(imp.Hidden, ",")}, "\x00")
 	}
-	if target == LanguageJS || target == LanguageTS {
+	if target == LanguageJS || target == LanguageTS || target == LanguageXState {
 		if imp.Default != "" || len(imp.Specifiers) > 0 {
 			return strings.Join([]string{path, string(imp.Language), static, deferred, typeOnly, "module-members"}, "\x00")
 		}

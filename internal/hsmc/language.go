@@ -25,6 +25,7 @@ var supportedTargetLanguages = []Language{
 	LanguageJS,
 	LanguagePython,
 	LanguageTS,
+	LanguageXState,
 	LanguageRust,
 	LanguageZig,
 	LanguageJSONIR,
@@ -76,6 +77,8 @@ func ParseLanguage(value string) (Language, bool) {
 		return LanguageRust, true
 	case "cts", "mts", "ts", "tsx", "typescript":
 		return LanguageTS, true
+	case "xstate", "x-state":
+		return LanguageXState, true
 	case "zig":
 		return LanguageZig, true
 	case "ir", "json", "json-ir":

@@ -9,9 +9,9 @@ import (
 
 func TestSupportedLanguagesAreRegisteredAsSourcesOrTargets(t *testing.T) {
 	compiler := NewCompiler()
-	wantAll := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
+	wantAll := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageXState, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
 	wantSources := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageRust, LanguageZig, LanguageJSONIR}
-	wantTargets := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
+	wantTargets := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageXState, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
 
 	if got := SupportedLanguages(); !reflect.DeepEqual(got, wantAll) {
 		t.Fatalf("SupportedLanguages() = %#v, want %#v", got, wantAll)
@@ -72,6 +72,8 @@ func TestParseLanguageAliases(t *testing.T) {
 		"ts":         LanguageTS,
 		"tsx":        LanguageTS,
 		"typescript": LanguageTS,
+		"x-state":    LanguageXState,
+		"xstate":     LanguageXState,
 		"zig":        LanguageZig,
 		"ir":         LanguageJSONIR,
 		"json":       LanguageJSONIR,
