@@ -20,6 +20,7 @@ var supportedTargetLanguages = []Language{
 	LanguageCSharp,
 	LanguageCPP,
 	LanguageDart,
+	LanguageElixir,
 	LanguageGo,
 	LanguageJava,
 	LanguageJS,
@@ -65,6 +66,8 @@ func ParseLanguage(value string) (Language, bool) {
 		return LanguageCPP, true
 	case "dart":
 		return LanguageDart, true
+	case "elixir", "ex", "exs", "hsm.ex":
+		return LanguageElixir, true
 	case "go", "golang":
 		return LanguageGo, true
 	case "java":

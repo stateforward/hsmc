@@ -9,9 +9,9 @@ import (
 
 func TestSupportedLanguagesAreRegisteredAsSourcesOrTargets(t *testing.T) {
 	compiler := NewCompiler()
-	wantAll := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageXState, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
+	wantAll := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageElixir, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageXState, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
 	wantSources := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageRust, LanguageZig, LanguageJSONIR}
-	wantTargets := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageXState, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
+	wantTargets := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageElixir, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageXState, LanguageRust, LanguageZig, LanguageJSONIR, LanguageMermaid, LanguagePlantUML}
 
 	if got := SupportedLanguages(); !reflect.DeepEqual(got, wantAll) {
 		t.Fatalf("SupportedLanguages() = %#v, want %#v", got, wantAll)
@@ -55,6 +55,10 @@ func TestParseLanguageAliases(t *testing.T) {
 		"cpp":        LanguageCPP,
 		"cxx":        LanguageCPP,
 		"dart":       LanguageDart,
+		"elixir":     LanguageElixir,
+		"ex":         LanguageElixir,
+		"exs":        LanguageElixir,
+		"hsm.ex":     LanguageElixir,
 		"go":         LanguageGo,
 		"golang":     LanguageGo,
 		"java":       LanguageJava,

@@ -114,6 +114,7 @@ func NewCompiler() *Compiler {
 	compiler.RegisterBackend(NewCSharpBackend())
 	compiler.RegisterBackend(NewCPPBackend())
 	compiler.RegisterBackend(NewDartBackend())
+	compiler.RegisterBackend(NewElixirBackend())
 	compiler.RegisterBackend(NewGoBackend())
 	compiler.RegisterBackend(NewJavaBackend())
 	compiler.RegisterBackend(NewJavaScriptBackend())
@@ -725,7 +726,7 @@ func validateGeneratedTopLevelSymbolUniqueness(program *Program, target Language
 
 func generatedTopLevelSymbolUses(program *Program, target Language) []generatedTopLevelSymbolUse {
 	switch target {
-	case LanguageCPP, LanguageCSharp, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageRust, LanguageTS, LanguageXState, LanguageZig:
+	case LanguageCPP, LanguageCSharp, LanguageDart, LanguageElixir, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageRust, LanguageTS, LanguageXState, LanguageZig:
 	default:
 		return nil
 	}
@@ -1306,7 +1307,7 @@ func remainderAfterFirstTopLevelConstruct(code string) string {
 
 func behaviorSymbolFor(target Language, id string) string {
 	switch target {
-	case LanguageCPP, LanguageRust, LanguageZig:
+	case LanguageCPP, LanguageElixir, LanguageRust, LanguageZig:
 		return snakeName(id)
 	case LanguageCSharp, LanguageGo, LanguageJava:
 		return exportName(id)
@@ -1322,6 +1323,8 @@ func behaviorSymbolFor(target Language, id string) string {
 func modelSymbolFor(target Language, name string) string {
 	switch target {
 	case LanguageCPP, LanguageRust, LanguageZig:
+		return snakeName(name) + "_model"
+	case LanguageElixir:
 		return snakeName(name) + "_model"
 	case LanguageCSharp, LanguageGo, LanguageJava:
 		return exportName(name) + "Model"
@@ -1342,6 +1345,16 @@ func generatedScaffoldSymbols(program *Program, target Language) []string {
 		return []string{"GeneratedHsm"}
 	case LanguagePython:
 		fallbacks := collectPythonTriggerFallbacks(program)
+		if len(fallbacks) == 0 {
+			return nil
+		}
+		symbols := make([]string, 0, len(fallbacks))
+		for _, fallback := range fallbacks {
+			symbols = append(symbols, fallback.Name)
+		}
+		return symbols
+	case LanguageElixir:
+		fallbacks := collectElixirTriggerFallbacks(program)
 		if len(fallbacks) == 0 {
 			return nil
 		}
@@ -1577,6 +1590,8 @@ func adapterScaffoldSymbols(request AdapterRequest) []string {
 		return []string{"GeneratedHsm"}
 	case LanguagePython:
 		return pythonTriggerFallbackNamesFromViews(request.Models)
+	case LanguageElixir:
+		return elixirTriggerFallbackNamesFromViews(request.Models)
 	case LanguageRust:
 		if len(request.Models) > 0 {
 			return []string{"HsmcInstance", "hsmc_true_guard", "hsmc_zero_duration", "hsmc_unix_epoch"}
@@ -1590,6 +1605,41 @@ func adapterScaffoldSymbols(request AdapterRequest) []string {
 		return symbols
 	}
 	return nil
+}
+
+func elixirTriggerFallbackNamesFromViews(models []ModelView) []string {
+	seen := map[string]bool{}
+	var names []string
+	var visitTransition func(TransitionView)
+	var visitState func(StateView)
+	visitTransition = func(transition TransitionView) {
+		if transition.Trigger == nil || !elixirNeedsTriggerFallback(*transition.Trigger) {
+			return
+		}
+		key := elixirTriggerFallbackKey(*transition.Trigger)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		names = append(names, fmt.Sprintf("hsmc_trigger_fallback_%d", len(names)+1))
+	}
+	visitState = func(state StateView) {
+		for _, transition := range state.Transitions {
+			visitTransition(transition)
+		}
+		for _, child := range state.States {
+			visitState(child)
+		}
+	}
+	for _, model := range models {
+		for _, transition := range model.Transitions {
+			visitTransition(transition)
+		}
+		for _, state := range model.States {
+			visitState(state)
+		}
+	}
+	return names
 }
 
 func pythonTriggerFallbackNamesFromViews(models []ModelView) []string {
@@ -1789,6 +1839,8 @@ func compilerOwnedImports(target Language) []string {
 		return []string{"hsm/hsm.hpp", "chrono", "cstdint", "string"}
 	case LanguageDart:
 		return []string{"package:hsm/hsm.dart", "dart:async", "dart:core"}
+	case LanguageElixir:
+		return []string{"hsm", "HSM"}
 	case LanguageGo:
 		return []string{"github.com/stateforward/hsm.go", "context", "time", "builtin", "builtin.bool", "builtin.false", "builtin.nil", "builtin.true"}
 	case LanguageJava:
@@ -1855,6 +1907,16 @@ func targetImportShape(target Language) ImportShapeRules {
 				"Alias maps to `as`; deferred imports must set alias; named specifiers map to `show`; default imports, hidden specifiers, and specifier aliases are rejected for adapter-created target imports.",
 				"Do not combine a Dart prefix alias with named specifiers in translated target imports; use either a prefix import or a show import.",
 				"Native Dart source context may preserve hide combinators, but translated target imports cannot use them because they implicitly bind unlisted names.",
+			},
+		}
+	case LanguageElixir:
+		return ImportShapeRules{
+			Language:            target,
+			SupportsBareImport:  true,
+			SupportsModuleAlias: true,
+			Notes: []string{
+				"Use Elixir module aliases such as MyApp.Helpers; alias maps to `as:`.",
+				"Default imports, named specifiers, hidden specifiers, and static/deferred/type-only imports are rejected.",
 			},
 		}
 	case LanguageGo:
@@ -2135,6 +2197,13 @@ func validateImportShape(imp Import, target Language, context string) error {
 			if specifier.Alias != "" {
 				return fmt.Errorf("%s import %q uses specifier alias %q unsupported by Dart", context, imp.Path, specifier.Alias)
 			}
+		}
+	case LanguageElixir:
+		if len(imp.Hidden) > 0 {
+			return fmt.Errorf("%s import %q uses hidden specifiers unsupported by Elixir", context, imp.Path)
+		}
+		if imp.Default != "" || len(imp.Specifiers) > 0 {
+			return fmt.Errorf("%s import %q uses default or named specifiers unsupported by Elixir", context, imp.Path)
 		}
 	case LanguageJS, LanguageTS, LanguageXState:
 		if len(imp.Hidden) > 0 {

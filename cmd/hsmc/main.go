@@ -271,6 +271,8 @@ func targetExtension(target hsmc.Language) string {
 		return ".cpp"
 	case hsmc.LanguageDart:
 		return ".dart"
+	case hsmc.LanguageElixir:
+		return ".ex"
 	case hsmc.LanguageGo:
 		return ".go"
 	case hsmc.LanguageJava:
@@ -409,6 +411,8 @@ func inferLanguageFromPath(path string) (hsmc.Language, bool) {
 		return hsmc.LanguageCPP, true
 	case ".dart":
 		return hsmc.LanguageDart, true
+	case ".ex", ".exs":
+		return hsmc.LanguageElixir, true
 	case ".go":
 		return hsmc.LanguageGo, true
 	case ".java":

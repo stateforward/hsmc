@@ -18,6 +18,8 @@ Adapters and backends must not depend on the parser runtime. A frontend may swit
 
 ## Supported Languages
 
+<!-- supported source and target language aliases from internal/hsmc/language.go and cmd/hsmc/main.go -->
+
 Current source languages:
 
 - `cs`, `csharp`, `c#`, `c-sharp`
@@ -35,6 +37,7 @@ Current source languages:
 
 Additional target-only implementation languages:
 
+- `elixir`, `ex`, `exs`, `hsm.ex`
 - `xstate`, `x-state`
 
 Additional target-only diagram languages:
@@ -42,7 +45,7 @@ Additional target-only diagram languages:
 - `mermaid`, `mmd`
 - `plantuml`, `puml`, `plant`
 
-Canonical compiler implementation and transport language IDs are `csharp`, `cpp`, `dart`, `go`, `java`, `javascript`, `python`, `typescript`, `xstate`, `rust`, `zig`, and `json-ir`; target-only diagram IDs are `mermaid` and `plantuml`. The other names are CLI aliases. Every supported source can compile to every supported target. Behavior bodies that have not been translated to an implementation target are preserved as target-language comments inside the generated target behavior body, followed by the minimal target-language no-op or default return needed to keep the output editable. Globals that have not been translated to an implementation target are preserved as target-language comments near the top of the generated output. Diagram targets preserve captured behavior/global source as Mermaid or PlantUML notes attached to the relevant states or model.
+Canonical compiler implementation and transport language IDs are `csharp`, `cpp`, `dart`, `elixir`, `go`, `java`, `javascript`, `python`, `typescript`, `xstate`, `rust`, `zig`, and `json-ir`; target-only diagram IDs are `mermaid` and `plantuml`. The other names are CLI aliases. Every supported source can compile to every supported target. Behavior bodies that have not been translated to an implementation target are preserved as target-language comments inside the generated target behavior body, followed by the minimal target-language no-op or default return needed to keep the output editable. Globals that have not been translated to an implementation target are preserved as target-language comments near the top of the generated output. Diagram targets preserve captured behavior/global source as Mermaid or PlantUML notes attached to the relevant states or model.
 
 JSON IR is a transport format. A JSON IR input must include `source_language` set to the original implementation language, not `json-ir`, so the compiler can preserve source import context and tell adapters what language behavior/global code came from.
 

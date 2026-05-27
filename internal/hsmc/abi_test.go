@@ -32,7 +32,7 @@ func TestAssignTargetABIPopulatesBehaviorContracts(t *testing.T) {
 }
 
 func TestBehaviorABIsExposeStableUniqueParameters(t *testing.T) {
-	languages := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageRust, LanguageTS, LanguageZig}
+	languages := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageElixir, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageRust, LanguageTS, LanguageZig}
 	kinds := []BehaviorKind{BehaviorEntry, BehaviorExit, BehaviorActivity, BehaviorGuard, BehaviorEffect, BehaviorOperation}
 	triggerKinds := []TriggerKind{"", TriggerAfter, TriggerEvery, TriggerAt, TriggerWhen}
 

@@ -112,6 +112,10 @@ func normalizeLocalNames(imp Import) []string {
 		if imp.Language == LanguagePython {
 			base, _, _ = strings.Cut(base, ".")
 		}
+		if imp.Language == LanguageElixir {
+			parts := strings.Split(base, ".")
+			base = parts[len(parts)-1]
+		}
 		add(base)
 	}
 	return names
@@ -156,6 +160,7 @@ func isHSMImportPath(path string) bool {
 		path == "@stateforward/hsm.ts" ||
 		path == "hsm/hsm.hpp" ||
 		path == "package:hsm/hsm.dart" ||
+		path == "hsm.ex" ||
 		path == "Stateforward.Hsm" ||
 		path == "Stateforward.Hsm.Hsm" ||
 		path == "com.stateforward.hsm" ||

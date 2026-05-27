@@ -65,7 +65,7 @@ func TestSupportedLanguageMatrixCompilesAnyToAny(t *testing.T) {
 func TestSupportedLanguageMatrixRoundTripsEverySourceThroughJSONIR(t *testing.T) {
 	ctx := context.Background()
 	compiler := NewCompiler()
-	targets := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageRust, LanguageZig}
+	targets := []Language{LanguageCSharp, LanguageCPP, LanguageDart, LanguageElixir, LanguageGo, LanguageJava, LanguageJS, LanguagePython, LanguageTS, LanguageRust, LanguageZig}
 	for _, source := range implementationMatrixSources() {
 		source := source
 		t.Run(source.name, func(t *testing.T) {

@@ -6,7 +6,7 @@ func eventSymbolFor(language Language, symbol string) string {
 	switch language {
 	case LanguageCSharp, LanguageJava:
 		return exportName(symbol)
-	case LanguageCPP, LanguageRust, LanguageZig:
+	case LanguageCPP, LanguageElixir, LanguageRust, LanguageZig:
 		return snakeName(symbol)
 	case LanguageGo:
 		return exportName(symbol)

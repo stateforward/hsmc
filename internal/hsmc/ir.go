@@ -7,6 +7,7 @@ const (
 	LanguageCSharp   Language = "csharp"
 	LanguageCPP      Language = "cpp"
 	LanguageDart     Language = "dart"
+	LanguageElixir   Language = "elixir"
 	LanguageGo       Language = "go"
 	LanguageJava     Language = "java"
 	LanguageJS       Language = "javascript"

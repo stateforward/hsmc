@@ -131,6 +131,8 @@ For custom integrations, use `-adapter command` with any executable that speaks 
 
 ## Supported Languages
 
+<!-- supported source and target language names from internal/hsmc/language.go -->
+
 Source languages:
 
 - C#
@@ -150,6 +152,7 @@ Target languages:
 - C#
 - C++
 - Dart
+- Elixir
 - Go
 - Java
 - JavaScript

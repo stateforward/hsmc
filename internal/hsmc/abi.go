@@ -21,6 +21,8 @@ func BehaviorABIForTrigger(language Language, kind BehaviorKind, triggerKind Tri
 		return cppBehaviorABI(kind, triggerKind)
 	case LanguageDart:
 		return dartBehaviorABI(kind, triggerKind)
+	case LanguageElixir:
+		return elixirBehaviorABI(kind, triggerKind)
 	case LanguageGo:
 		return goBehaviorABI(kind, triggerKind)
 	case LanguageJava:
@@ -165,6 +167,32 @@ func csharpBehaviorABI(kind BehaviorKind, triggerKind TriggerKind) *BehaviorABI 
 		Signature:  signature,
 		ReturnType: returnType,
 		Parameters: parameters,
+	}
+}
+
+func elixirBehaviorABI(kind BehaviorKind, triggerKind TriggerKind) *BehaviorABI {
+	returnType := "any"
+	if kind == BehaviorGuard {
+		returnType = "boolean"
+	} else if kind == BehaviorTrigger {
+		switch triggerKind {
+		case TriggerAfter, TriggerEvery, TriggerAt:
+			returnType = "non_neg_integer"
+		case TriggerWhen:
+			returnType = "boolean"
+		default:
+			returnType = "any"
+		}
+	}
+	return &BehaviorABI{
+		Language:   LanguageElixir,
+		Signature:  "fun(ctx, instance, event) :: " + returnType,
+		ReturnType: returnType,
+		Parameters: []ABIParameter{
+			{Name: "ctx", Type: "HSM.Context.t"},
+			{Name: "instance", Type: "HSM.Instance.t"},
+			{Name: "event", Type: "HSM.Event.t"},
+		},
 	}
 }
 
